@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시나리오 비교 분석</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'IBM Plex Sans KR',sans-serif; background:#f9f8f5; color:#111; padding:28px; min-height:100vh; }
+
+  .ud-header { display:flex; align-items:baseline; gap:12px; margin-bottom:20px; padding-bottom:12px; border-bottom:1.5px solid #e0ddd6; }
+  .ud-title { font-size:16px; font-weight:600; letter-spacing:-.3px; color:#111; }
+  .ud-sub { font-size:11px; color:#999; }
+
+  .ud-tabs { display:flex; gap:5px; margin-bottom:16px; }
+  .ud-tab { font-size:11px; font-weight:500; padding:5px 14px; border-radius:20px; cursor:pointer; border:1px solid #ccc; color:#666; background:transparent; transition:all .15s; }
+  .ud-tab.on { background:#111; color:#fff; border-color:#111; }
+
+  .ud-panel { display:none; }
+  .ud-panel.on { display:block; }
+
+  .tbl { width:100%; border-collapse:collapse; font-size:12px; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .tbl thead tr { border-bottom:1.5px solid #e8e5de; background:#f4f2ed; }
+  .tbl th { padding:9px 12px; font-weight:500; font-size:11px; color:#888; text-align:right; white-space:nowrap; }
+  .tbl th:first-child { text-align:left; }
+  .tbl td { padding:10px 12px; text-align:right; border-bottom:1px solid #f0ede6; color:#111; font-family:'IBM Plex Mono',monospace; font-size:12px; }
+  .tbl td:first-child { font-family:'IBM Plex Sans KR',sans-serif; color:#555; text-align:left; white-space:nowrap; }
+  .tbl tr:last-child td { border-bottom:none; }
+  .tbl tr:hover td { background:#faf9f6; }
+  .tbl .sep td { border-top:1.5px solid #e0ddd6; font-weight:600; color:#111 !important; font-family:'IBM Plex Sans KR',sans-serif !important; }
+
+  .ca { color:#2563a8 !important; font-weight:500; }
+  .cb { color:#0a7c55 !important; font-weight:500; }
+  .diff-pos { color:#0a7c55 !important; font-weight:600; }
+  .diff-neg { color:#c0392b !important; font-weight:600; }
+
+  .badge-a { display:inline-block; padding:3px 9px; border-radius:4px; background:#dbeafe; color:#1e40af; font-size:11px; font-weight:600; }
+  .badge-b { display:inline-block; padding:3px 9px; border-radius:4px; background:#d1fae5; color:#065f46; font-size:11px; font-weight:600; }
+
+  .bc-wrap { background:#fff; border-radius:10px; padding:18px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .bc-legend { display:flex; gap:16px; margin-bottom:16px; }
+  .bc-dot { width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:5px; vertical-align:middle; }
+  .bc-grid { display:flex; flex-direction:column; gap:12px; }
+  .bc-row { display:grid; grid-template-columns:140px 1fr; gap:10px; align-items:center; }
+  .bc-label { font-size:11px; color:#555; line-height:1.4; }
+  .bc-bars { display:flex; flex-direction:column; gap:4px; }
+  .bc-bwrap { display:flex; align-items:center; gap:8px; }
+  .bc-bg { flex:1; background:#f0ede6; border-radius:3px; height:11px; overflow:hidden; }
+  .bc-fill { height:100%; border-radius:3px; }
+  .bc-val { font-family:'IBM Plex Mono',monospace; font-size:10px; min-width:76px; text-align:right; white-space:nowrap; }
+
+  .pie-wrap-outer { background:#fff; border-radius:10px; padding:18px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .pie-sec { display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
+  .pie-item { display:flex; flex-direction:column; align-items:center; gap:7px; }
+  .pie-ttl { font-size:11px; font-weight:600; color:#555; }
+  .pie-leg { display:flex; flex-direction:column; gap:6px; min-width:160px; justify-content:center; }
+  .pie-li { display:flex; align-items:center; gap:8px; font-size:11px; color:#555; }
+  .pie-sq { width:11px; height:11px; border-radius:3px; flex-shrink:0; }
+  .note { margin-top:10px; font-size:10px; color:#bbb; }
+</style>
+</head>
+<body>
+
+<div class="ud-header">
+  <div class="ud-title">시나리오 비교 분석</div>
+  <div class="ud-sub">A시나리오1_주거 vs A시나리오2_공업</div>
+</div>
+
+<div class="ud-tabs">
+  <button class="ud-tab on" onclick="sw('table',this)">수치 비교표</button>
+  <button class="ud-tab" onclick="sw('bar',this)">막대 차트</button>
+  <button class="ud-tab" onclick="sw('pie',this)">면적 구성</button>
+</div>
+
+<div class="ud-panel on" id="p-table">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>지표</th>
+        <th><span class="badge-a">시나리오 A 주거</span></th>
+        <th><span class="badge-b">시나리오 B 공업</span></th>
+        <th>차이 (B−A)</th>
+        <th>변화율</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body"></tbody>
+  </table>
+  <div class="note">일자리/주거 비율 = 일자리 ÷ 주거수용인구 &nbsp;|&nbsp; 주차 비율 = 주차가능대수 ÷ 필요주차공간</div>
+</div>
+
+<div class="ud-panel" id="p-bar">
+  <div class="bc-wrap">
+    <div class="bc-legend">
+      <div><span class="bc-dot" style="background:#3b82f6"></span><span style="font-size:11px;color:#555">시나리오 A 주거</span></div>
+      <div><span class="bc-dot" style="background:#10b981"></span><span style="font-size:11px;color:#555">시나리오 B 공업</span></div>
+    </div>
+    <div class="bc-grid" id="bar-grid"></div>
+  </div>
+</div>
+
+<div class="ud-panel" id="p-pie">
+  <div class="pie-wrap-outer">
+    <div style="font-size:11px;color:#888;margin-bottom:16px;">공간 사용 유형 면적 구성 비율 (㎡)</div>
+    <div class="pie-sec">
+      <div class="pie-item"><canvas id="cvA" width="150" height="150"></canvas><div class="pie-ttl">시나리오 A 주거</div></div>
+      <div class="pie-item"><canvas id="cvB" width="150" height="150"></canvas><div class="pie-ttl">시나리오 B 공업</div></div>
+      <div class="pie-leg" id="pie-leg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROWS = [
+  { label:'주거수용인구', unit:'명',        a:2738.68,  b:2194.57,  max:4000,     good:'a' },
+  { label:'일자리',       unit:'개',        a:1349.65,  b:3917.81,  max:5000,     good:'b' },
+  { label:'주차가능대수', unit:'대',        a:757.54,   b:827.29,   max:1200,     good:'b' },
+  { label:'필요주차공간', unit:'대',        a:1584.5,   b:1836.96,  max:2500,     good:'a' },
+  { label:'통행량',       unit:'trips/day', a:8871.17,  b:11363.15, max:15000,    good:'a' },
+  { label:'에너지사용량', unit:'kWh/yr',    a:18461915, b:27717433, max:35000000, good:'a' },
+  { label:'탄소배출량',   unit:'kgCO₂/yr', a:7384.77,  b:11086.97, max:14000,    good:'a' },
+];
+const RATIOS = [
+  { label:'일자리/주거 비율',    a:1349.65/2738.68, b:3917.81/2194.57, unit:'', good:'b' },
+  { label:'주차 공급/수요 비율', a:757.54/1584.5,   b:827.29/1836.96,  unit:'', good:''  },
+];
+const PIE_A = [
+  {l:'Residential (주택)', v:116393.81, c:'#3b82f6'},
+  {l:'Retail (상업)',       v:44988.32,  c:'#f59e0b'},
+  {l:'Parking (주차)',      v:23922.28,  c:'#8b5cf6'},
+];
+const PIE_B = [
+  {l:'Residential (주택)', v:93269.29,  c:'#3b82f6'},
+  {l:'Office (사무)',       v:71873.66,  c:'#10b981'},
+  {l:'Parking (주차)',      v:26124.88,  c:'#8b5cf6'},
+  {l:'Industrial (산업)',   v:18201.73,  c:'#ef4444'},
+  {l:'Retail (상업)',       v:15121.43,  c:'#f59e0b'},
+];
+
+function fmt(v, unit) {
+  if (unit === '') return v.toFixed(2);
+  if (v >= 1000000) return (v / 1000000).toFixed(2) + 'M';
+  return v.toLocaleString('ko-KR', { maximumFractionDigits: 1 });
+}
+function diffFmt(a, b, unit) {
+  const d = b - a, s = d >= 0 ? '+' : '−';
+  return s + fmt(Math.abs(d), unit);
+}
+function pctFmt(a, b) {
+  const p = (b - a) / a * 100;
+  return (p >= 0 ? '+' : '') + p.toFixed(1) + '%';
+}
+function diffClass(a, b, good) {
+  if (!good) return '';
+  const up = b > a;
+  if (good === 'b') return up ? 'diff-pos' : 'diff-neg';
+  if (good === 'a') return up ? 'diff-neg' : 'diff-pos';
+  return '';
+}
+
+(function () {
+  const tb = document.getElementById('tbl-body');
+  let html = ROWS.map(r => {
+    const dc = diffClass(r.a, r.b, r.good);
+    return `<tr>
+      <td>${r.label}<span style="font-size:10px;color:#bbb;margin-left:5px">${r.unit}</span></td>
+      <td class="ca">${fmt(r.a, r.unit)}</td>
+      <td class="cb">${fmt(r.b, r.unit)}</td>
+      <td class="${dc}">${diffFmt(r.a, r.b, r.unit)}</td>
+      <td class="${dc}">${pctFmt(r.a, r.b)}</td>
+    </tr>`;
+  }).join('');
+  html += RATIOS.map((r, i) => {
+    const dc = diffClass(r.a, r.b, r.good);
+    return `<tr class="${i === 0 ? 'sep' : ''}">
+      <td>${r.label}</td>
+      <td class="ca">${r.a.toFixed(2)}</td>
+      <td class="cb">${r.b.toFixed(2)}</td>
+      <td class="${dc}">${diffFmt(r.a, r.b, r.unit)}</td>
+      <td class="${dc}">${pctFmt(r.a, r.b)}</td>
+    </tr>`;
+  }).join('');
+  tb.innerHTML = html;
+})();
+
+function renderBar() {
+  document.getElementById('bar-grid').innerHTML = ROWS.map(r => {
+    const pa = Math.round(r.a / r.max * 100);
+    const pb = Math.round(r.b / r.max * 100);
+    return `<div class="bc-row">
+      <div class="bc-label">${r.label}<br><span style="font-size:10px;opacity:.55">${r.unit}</span></div>
+      <div class="bc-bars">
+        <div class="bc-bwrap">
+          <div class="bc-bg"><div class="bc-fill" style="width:${pa}%;background:#3b82f6"></div></div>
+          <span class="bc-val ca">${fmt(r.a, r.unit)}</span>
+        </div>
+        <div class="bc-bwrap">
+          <div class="bc-bg"><div class="bc-fill" style="width:${pb}%;background:#10b981"></div></div>
+          <span class="bc-val cb">${fmt(r.b, r.unit)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function drawPie(id, data) {
+  const cv = document.getElementById(id);
+  const ctx = cv.getContext('2d');
+  const cx = 75, cy = 75, r = 62, ir = 30;
+  const tot = data.reduce((s, d) => s + d.v, 0);
+  let ang = -Math.PI / 2;
+  data.forEach(d => {
+    const sw = d.v / tot * Math.PI * 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, ang, ang + sw);
+    ctx.closePath(); ctx.fillStyle = d.c; ctx.fill();
+    ang += sw;
+  });
+  ctx.beginPath(); ctx.arc(cx, cy, ir, 0, Math.PI * 2);
+  ctx.fillStyle = '#f9f8f5'; ctx.fill();
+  ctx.fillStyle = '#aaa'; ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('면적(㎡)', cx, cy);
+}
+
+function renderPieLeg() {
+  const seen = {};
+  [...PIE_A, ...PIE_B].forEach(d => { if (!seen[d.l]) seen[d.l] = d.c; });
+  document.getElementById('pie-leg').innerHTML =
+    Object.entries(seen).map(([l, c]) =>
+      `<div class="pie-li"><div class="pie-sq" style="background:${c}"></div>${l}</div>`
+    ).join('');
+}
+
+function sw(name, btn) {
+  document.querySelectorAll('.ud-tab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.ud-panel').forEach(p => p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('p-' + name).classList.add('on');
+  if (name === 'bar') renderBar();
+  if (name === 'pie') { drawPie('cvA', PIE_A); drawPie('cvB', PIE_B); renderPieLeg(); }
+}
+</script>
+</body>
+</html>
