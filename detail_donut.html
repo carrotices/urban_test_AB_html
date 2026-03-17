@@ -1,0 +1,174 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>지표 구성 분석</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:sans-serif;background:#f9f8f5;color:#111;padding:16px}
+h3{font-size:13px;font-weight:600;color:#111;padding-bottom:9px;border-bottom:1.5px solid #e0ddd6;margin-bottom:4px}
+h3 span{font-size:10px;color:#999;font-weight:400;margin-left:8px}
+.tabs{display:flex;gap:4px;margin:10px 0 14px}
+.tab{font-size:10px;padding:3px 11px;border-radius:20px;cursor:pointer;border:1px solid #ccc;color:#666;background:transparent}
+.tab.on{background:#111;color:#fff;border-color:#111}
+.pn{display:none}.pn.on{display:block}
+.block{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:10px}
+.block-ttl{font-size:11px;font-weight:600;color:#444;margin-bottom:12px}
+.charts{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.chart{display:flex;flex-direction:column;align-items:center;gap:5px}
+.sc{font-size:10px;font-weight:600}
+.sc.a{color:#2563a8}.sc.b{color:#0a7c55}
+.leg{display:flex;flex-direction:column;gap:5px;justify-content:center;flex:1;min-width:140px}
+.li{display:flex;align-items:center;gap:6px;font-size:10px;color:#555}
+.sq{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.pct{margin-left:auto;font-size:10px;font-weight:500}
+.pct.a{color:#2563a8}.pct.b{color:#0a7c55}
+.formula{font-size:9px;color:#bbb;margin-top:8px;line-height:1.6;padding:6px 10px;border-radius:6px;background:#f4f2ed}
+</style></head><body>
+<h3>지표 구성 비율<span>면적 기반 계산식</span></h3>
+<div class="tabs">
+  <button class="tab on" onclick="sw('job',this)">일자리</button>
+  <button class="tab" onclick="sw('trip',this)">통행량</button>
+  <button class="tab" onclick="sw('park',this)">필요주차</button>
+  <button class="tab" onclick="sw('energy',this)">에너지</button>
+</div>
+<div id="p-job"  class="pn on"></div>
+<div id="p-trip" class="pn"></div>
+<div id="p-park" class="pn"></div>
+<div id="p-energy" class="pn"></div>
+
+<script>
+var AA={주택:116393.81,상업:44988.32,주차:23922.28,사무:0,산업:0};
+var AB={주택:93269.29,상업:15121.43,주차:26124.88,사무:71873.66,산업:18201.73};
+
+var DEFS={
+  job:{
+    label:'일자리',unit:'개',
+    formula:'사무÷20 + 산업÷40 + 상업÷30',
+    parts:function(a){return[
+      {l:'사무 (Office)',  v:a.사무/20,  c:'#A8C4F5'},
+      {l:'산업 (Industrial)', v:a.산업/40, c:'#B8A8F5'},
+      {l:'상업 (Retail)',  v:a.상업/30,  c:'#F5A878'},
+    ]}
+  },
+  trip:{
+    label:'통행량',unit:'trips/day',
+    formula:'일자리×1.5 + 주거수용인구×2.5',
+    parts:function(a){
+      var job=a.사무/20+a.산업/40+a.상업/30;
+      var pop=a.주택/85;
+      return[
+        {l:'일자리 유발',    v:job*1.5,  c:'#A8C4F5'},
+        {l:'주거 유발',      v:pop*2.5,  c:'#F5C842'},
+      ]
+    }
+  },
+  park:{
+    label:'필요주차공간',unit:'대',
+    formula:'일자리×0.2 + (주택면적÷85)×1.2',
+    parts:function(a){
+      var job=a.사무/20+a.산업/40+a.상업/30;
+      var pop=a.주택/85;
+      return[
+        {l:'일자리 수요',    v:job*0.2,  c:'#A8C4F5'},
+        {l:'주거 수요',      v:pop*1.2,  c:'#F5C842'},
+      ]
+    }
+  },
+  energy:{
+    label:'에너지사용량',unit:'kWh/yr',
+    formula:'사무×200 + 산업×250 + 상업×180 + 주택×120',
+    parts:function(a){return[
+      {l:'사무 (Office)',     v:a.사무*200,  c:'#A8C4F5'},
+      {l:'산업 (Industrial)', v:a.산업*250,  c:'#B8A8F5'},
+      {l:'상업 (Retail)',     v:a.상업*180,  c:'#F5A878'},
+      {l:'주택 (Residential)',v:a.주택*120,  c:'#F5C842'},
+    ]}
+  }
+};
+
+function fv(v,unit){
+  if(v<=0)return'0';
+  if(unit==='kWh/yr')return(v/1e6).toFixed(2)+'M';
+  return v.toFixed(1);
+}
+
+function drawDonut(canvas,parts,unit){
+  var cv=document.getElementById(canvas);
+  if(!cv)return;
+  var ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,120,120);
+  var cx=60,cy=60,r=52,ir=30;
+  var tot=parts.reduce(function(s,p){return s+p.v},0);
+  var ang=-Math.PI/2;
+  parts.forEach(function(p){
+    if(p.v<=0)return;
+    var sw=p.v/tot*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,ang,ang+sw);
+    ctx.closePath();ctx.fillStyle=p.c;ctx.fill();
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,ang,ang+sw);
+    ctx.closePath();ctx.strokeStyle='#f9f8f5';ctx.lineWidth=1.5;ctx.stroke();
+    ang+=sw;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,ir,0,Math.PI*2);
+  ctx.fillStyle='#f9f8f5';ctx.fill();
+  ctx.fillStyle='#444';ctx.font='bold 11px sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(fv(tot,unit),cx,cy-5);
+  ctx.fillStyle='#aaa';ctx.font='8px sans-serif';
+  ctx.fillText(unit==='kWh/yr'?'kWh/yr':unit,cx,cy+6);
+}
+
+function makeLeg(parts,tot,clsName){
+  return parts.filter(function(p){return p.v>0}).map(function(p){
+    var pct=(p.v/tot*100).toFixed(1)+'%';
+    return'<div class="li"><div class="sq" style="background:'+p.c+'"></div><span>'+p.l+'</span><span class="pct '+clsName+'">'+pct+'</span></div>';
+  }).join('');
+}
+
+function renderPanel(key){
+  var def=DEFS[key];
+  var pA=def.parts(AA).filter(function(p){return p.v>0});
+  var pB=def.parts(AB).filter(function(p){return p.v>0});
+  var totA=pA.reduce(function(s,p){return s+p.v},0);
+  var totB=pB.reduce(function(s,p){return s+p.v},0);
+
+  var html='<div class="block">';
+  html+='<div class="block-ttl">'+def.label+' 구성 비율</div>';
+  html+='<div class="charts">';
+  html+='<div class="chart"><div class="sc a">시나리오 A 주거</div><canvas id="cv-'+key+'-a" width="120" height="120"></canvas></div>';
+  html+='<div class="chart"><div class="sc b">시나리오 B 공업</div><canvas id="cv-'+key+'-b" width="120" height="120"></canvas></div>';
+  html+='<div>';
+
+  // 통합 범례 — A/B 퍼센트 나란히
+  var allKeys=[];
+  pA.concat(pB).forEach(function(p){if(allKeys.indexOf(p.l)<0)allKeys.push(p.l)});
+  html+='<div style="display:flex;gap:6px;margin-bottom:6px;font-size:9px;color:#aaa"><span style="min-width:130px"></span><span style="min-width:42px;text-align:right;color:#2563a8">A</span><span style="min-width:42px;text-align:right;color:#0a7c55">B</span></div>';
+  allKeys.forEach(function(lbl){
+    var fa=pA.find(function(p){return p.l===lbl});
+    var fb=pB.find(function(p){return p.l===lbl});
+    var c=(fa||fb).c;
+    var pa=fa?(fa.v/totA*100).toFixed(1)+'%':'—';
+    var pb=fb?(fb.v/totB*100).toFixed(1)+'%':'—';
+    html+='<div class="li"><div class="sq" style="background:'+c+'"></div><span style="min-width:130px">'+lbl+'</span><span class="pct a" style="min-width:42px">'+pa+'</span><span class="pct b" style="min-width:42px">'+pb+'</span></div>';
+  });
+  html+='</div></div>';
+  html+='<div class="formula">계산식: '+def.formula+'</div>';
+  html+='</div>';
+
+  document.getElementById('p-'+key).innerHTML=html;
+
+  // 렌더 타이밍 보장
+  setTimeout(function(){
+    drawDonut('cv-'+key+'-a',pA,def.unit);
+    drawDonut('cv-'+key+'-b',pB,def.unit);
+  },30);
+}
+
+function sw(name,btn){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on')});
+  document.querySelectorAll('.pn').forEach(function(p){p.classList.remove('on')});
+  btn.classList.add('on');
+  document.getElementById('p-'+name).classList.add('on');
+  renderPanel(name);
+}
+
+renderPanel('job');
+</script></body></html>
