@@ -28,7 +28,7 @@
   .tbl td:first-child { font-family:'IBM Plex Sans KR',sans-serif; color:#555; text-align:left; white-space:nowrap; }
   .tbl tr:last-child td { border-bottom:none; }
   .tbl tr:hover td { background:#faf9f6; }
-  .tbl .sep td { border-top:1.5px solid #e0ddd6; font-weight:600; color:#111 !important; font-family:'IBM Plex Sans KR',sans-serif !important; }
+  .tbl .sep td { border-top:1.5px solid #e0ddd6; }
 
   .ca { color:#2563a8 !important; font-weight:500; }
   .cb { color:#0a7c55 !important; font-weight:500; }
@@ -125,16 +125,16 @@ const RATIOS = [
   { label:'주차 공급/수요 비율', a:757.54/1584.5,   b:827.29/1836.96,  unit:'', good:''  },
 ];
 const PIE_A = [
-  {l:'Residential (주택)', v:116393.81, c:'#3b82f6'},
-  {l:'Retail (상업)',       v:44988.32,  c:'#f59e0b'},
-  {l:'Parking (주차)',      v:23922.28,  c:'#8b5cf6'},
+  {l:'Residential (주택)', v:116393.81, c:'#F5C842'},
+  {l:'Retail (상업)',       v:44988.32,  c:'#F5A878'},
+  {l:'Parking (주차)',      v:23922.28,  c:'#D0CEC8'},
 ];
 const PIE_B = [
-  {l:'Residential (주택)', v:93269.29,  c:'#3b82f6'},
-  {l:'Office (사무)',       v:71873.66,  c:'#10b981'},
-  {l:'Parking (주차)',      v:26124.88,  c:'#8b5cf6'},
-  {l:'Industrial (산업)',   v:18201.73,  c:'#ef4444'},
-  {l:'Retail (상업)',       v:15121.43,  c:'#f59e0b'},
+  {l:'Residential (주택)', v:93269.29,  c:'#F5C842'},
+  {l:'Office (사무)',       v:71873.66,  c:'#A8C4F5'},
+  {l:'Parking (주차)',      v:26124.88,  c:'#D0CEC8'},
+  {l:'Industrial (산업)',   v:18201.73,  c:'#B8A8F5'},
+  {l:'Retail (상업)',       v:15121.43,  c:'#F5A878'},
 ];
 
 function fmt(v, unit) {
@@ -144,7 +144,13 @@ function fmt(v, unit) {
 }
 function diffFmt(a, b, unit) {
   const d = b - a, s = d >= 0 ? '+' : '−';
-  return s + fmt(Math.abs(d), unit);
+  const cls = d >= 0 ? 'diff-pos' : 'diff-neg';
+  return `<span class="${cls}">${s}${fmt(Math.abs(d), unit)}</span>`;
+}
+function pctFmtC(a, b) {
+  const p = (b - a) / a * 100;
+  const cls = p >= 0 ? 'diff-pos' : 'diff-neg';
+  return `<span class="${cls}">${(p >= 0 ? '+' : '') + p.toFixed(1)}%</span>`;
 }
 function pctFmt(a, b) {
   const p = (b - a) / a * 100;
@@ -161,23 +167,21 @@ function diffClass(a, b, good) {
 (function () {
   const tb = document.getElementById('tbl-body');
   let html = ROWS.map(r => {
-    const dc = diffClass(r.a, r.b, r.good);
     return `<tr>
       <td>${r.label}<span style="font-size:10px;color:#bbb;margin-left:5px">${r.unit}</span></td>
       <td class="ca">${fmt(r.a, r.unit)}</td>
       <td class="cb">${fmt(r.b, r.unit)}</td>
-      <td class="${dc}">${diffFmt(r.a, r.b, r.unit)}</td>
-      <td class="${dc}">${pctFmt(r.a, r.b)}</td>
+      <td>${diffFmt(r.a, r.b, r.unit)}</td>
+      <td>${pctFmtC(r.a, r.b)}</td>
     </tr>`;
   }).join('');
   html += RATIOS.map((r, i) => {
-    const dc = diffClass(r.a, r.b, r.good);
-    return `<tr class="${i === 0 ? 'sep' : ''}">
-      <td>${r.label}</td>
-      <td class="ca">${r.a.toFixed(2)}</td>
-      <td class="cb">${r.b.toFixed(2)}</td>
-      <td class="${dc}">${diffFmt(r.a, r.b, r.unit)}</td>
-      <td class="${dc}">${pctFmt(r.a, r.b)}</td>
+    return `<tr>
+      <td>${r.label}<span style="font-size:10px;color:#bbb;margin-left:5px">${r.unit||''}</span></td>
+      <td class="ca">${fmt(r.a, r.unit)}</td>
+      <td class="cb">${fmt(r.b, r.unit)}</td>
+      <td>${diffFmt(r.a, r.b, r.unit)}</td>
+      <td>${pctFmtC(r.a, r.b)}</td>
     </tr>`;
   }).join('');
   tb.innerHTML = html;
@@ -206,7 +210,7 @@ function renderBar() {
 function drawPie(id, data) {
   const cv = document.getElementById(id);
   const ctx = cv.getContext('2d');
-  const cx = 75, cy = 75, r = 62, ir = 30;
+  const cx = 75, cy = 75, r = 62, ir = 34;
   const tot = data.reduce((s, d) => s + d.v, 0);
   let ang = -Math.PI / 2;
   data.forEach(d => {
@@ -214,22 +218,39 @@ function drawPie(id, data) {
     ctx.beginPath(); ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, r, ang, ang + sw);
     ctx.closePath(); ctx.fillStyle = d.c; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, ang, ang + sw);
+    ctx.closePath(); ctx.strokeStyle = '#f9f8f5'; ctx.lineWidth = 1.5; ctx.stroke();
     ang += sw;
   });
   ctx.beginPath(); ctx.arc(cx, cy, ir, 0, Math.PI * 2);
   ctx.fillStyle = '#f9f8f5'; ctx.fill();
-  ctx.fillStyle = '#aaa'; ctx.font = '10px sans-serif';
+  const totK = (tot / 1000).toFixed(1);
+  ctx.fillStyle = '#444'; ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('면적(㎡)', cx, cy);
+  ctx.fillText(totK + 'k', cx, cy - 6);
+  ctx.fillStyle = '#aaa'; ctx.font = '9px sans-serif';
+  ctx.fillText('㎡ 총면적', cx, cy + 7);
 }
 
 function renderPieLeg() {
   const seen = {};
   [...PIE_A, ...PIE_B].forEach(d => { if (!seen[d.l]) seen[d.l] = d.c; });
+  const totA = PIE_A.reduce((s, d) => s + d.v, 0);
+  const totB = PIE_B.reduce((s, d) => s + d.v, 0);
   document.getElementById('pie-leg').innerHTML =
-    Object.entries(seen).map(([l, c]) =>
-      `<div class="pie-li"><div class="pie-sq" style="background:${c}"></div>${l}</div>`
-    ).join('');
+    Object.entries(seen).map(([l, c]) => {
+      const fa = PIE_A.find(d => d.l === l);
+      const fb = PIE_B.find(d => d.l === l);
+      const pa = fa ? (fa.v / totA * 100).toFixed(1) + '%' : '—';
+      const pb = fb ? (fb.v / totB * 100).toFixed(1) + '%' : '—';
+      return `<div class="pie-li">
+        <div class="pie-sq" style="background:${c}"></div>
+        <span style="min-width:130px">${l}</span>
+        <span class="ca" style="min-width:44px;text-align:right">${pa}</span>
+        <span class="cb" style="min-width:44px;text-align:right">${pb}</span>
+      </div>`;
+    }).join('');
 }
 
 function sw(name, btn) {
